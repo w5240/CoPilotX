@@ -3,7 +3,7 @@
  * Registers all IPC handlers for main-renderer communication
  */
 import { ipcMain, BrowserWindow, shell, dialog, app, nativeImage } from 'electron';
-import { existsSync } from 'node:fs';
+import { existsSync, cpSync, mkdirSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, extname, basename } from 'node:path';
 import crypto from 'node:crypto';
@@ -23,7 +23,7 @@ import {
   type ProviderConfig,
 } from '../utils/secure-storage';
 import { getOpenClawStatus, getOpenClawDir, getOpenClawConfigDir, getOpenClawSkillsDir, ensureDir } from '../utils/paths';
-import { getOpenClawCliCommand, installOpenClawCliMac } from '../utils/openclaw-cli';
+import { getOpenClawCliCommand } from '../utils/openclaw-cli';
 import { getSetting } from '../utils/store';
 import {
   saveProviderKeyToOpenClaw,
@@ -165,6 +165,7 @@ interface GatewayCronJob {
   schedule: { kind: string; expr?: string; everyMs?: number; at?: string; tz?: string };
   payload: { kind: string; message?: string; text?: string };
   delivery?: { mode: string; channel?: string; to?: string };
+  sessionTarget?: string;
   state: {
     nextRunAtMs?: number;
     lastRunAtMs?: number;
@@ -181,13 +182,11 @@ function transformCronJob(job: GatewayCronJob) {
   // Extract message from payload
   const message = job.payload?.message || job.payload?.text || '';
 
-  // Build target from delivery info
-  const channelType = job.delivery?.channel || 'unknown';
-  const target = {
-    channelType,
-    channelId: channelType,
-    channelName: channelType,
-  };
+  // Build target from delivery info — only if a delivery channel is specified
+  const channelType = job.delivery?.channel;
+  const target = channelType
+    ? { channelType, channelId: channelType, channelName: channelType }
+    : undefined;
 
   // Build lastRun from state
   const lastRun = job.state?.lastRunAtMs
@@ -232,6 +231,38 @@ function registerCronHandlers(gatewayManager: GatewayManager): void {
       const result = await gatewayManager.rpc('cron.list', { includeDisabled: true });
       const data = result as { jobs?: GatewayCronJob[] };
       const jobs = data?.jobs ?? [];
+
+      // Auto-repair legacy UI-created jobs that were saved without
+      // delivery: { mode: 'none' }.  The Gateway auto-normalizes them
+      // to delivery: { mode: 'announce' } which then fails with
+      // "Channel is required" when no external channels are configured.
+      for (const job of jobs) {
+        const isIsolatedAgent =
+          (job.sessionTarget === 'isolated' || !job.sessionTarget) &&
+          job.payload?.kind === 'agentTurn';
+        const needsRepair =
+          isIsolatedAgent &&
+          job.delivery?.mode === 'announce' &&
+          !job.delivery?.channel;
+
+        if (needsRepair) {
+          try {
+            await gatewayManager.rpc('cron.update', {
+              id: job.id,
+              patch: { delivery: { mode: 'none' } },
+            });
+            job.delivery = { mode: 'none' };
+            // Clear stale channel-resolution error from the last run
+            if (job.state?.lastError?.includes('Channel is required')) {
+              job.state.lastError = undefined;
+              job.state.lastStatus = 'ok';
+            }
+          } catch (e) {
+            console.warn(`Failed to auto-repair cron job ${job.id}:`, e);
+          }
+        }
+      }
+
       // Transform Gateway format to frontend format
       return jobs.map(transformCronJob);
     } catch (error) {
@@ -241,21 +272,16 @@ function registerCronHandlers(gatewayManager: GatewayManager): void {
   });
 
   // Create a new cron job
+  // UI-created tasks have no delivery target — results go to the ClawX chat page.
+  // Tasks created via external channels (Feishu, Discord, etc.) are handled
+  // directly by the OpenClaw Gateway and do not pass through this IPC handler.
   ipcMain.handle('cron:create', async (_, input: {
     name: string;
     message: string;
     schedule: string;
-    target: { channelType: string; channelId: string; channelName: string };
     enabled?: boolean;
   }) => {
     try {
-      // Transform frontend input to Gateway cron.add format
-      // For Discord, the recipient must be prefixed with "channel:" or "user:"
-      const recipientId = input.target.channelId;
-      const deliveryTo = input.target.channelType === 'discord' && recipientId
-        ? `channel:${recipientId}`
-        : recipientId;
-
       const gatewayInput = {
         name: input.name,
         schedule: { kind: 'cron', expr: input.schedule },
@@ -263,11 +289,11 @@ function registerCronHandlers(gatewayManager: GatewayManager): void {
         enabled: input.enabled ?? true,
         wakeMode: 'next-heartbeat',
         sessionTarget: 'isolated',
-        delivery: {
-          mode: 'announce',
-          channel: input.target.channelType,
-          to: deliveryTo,
-        },
+        // UI-created jobs deliver results via ClawX WebSocket chat events,
+        // not external messaging channels.  Setting mode='none' prevents
+        // the Gateway from attempting channel delivery (which would fail
+        // with "Channel is required" when no channels are configured).
+        delivery: { mode: 'none' },
       };
       const result = await gatewayManager.rpc('cron.add', gatewayInput);
       // Transform the returned job to frontend format
@@ -608,6 +634,55 @@ function registerGatewayHandlers(
  * For checking package status and channel configuration
  */
 function registerOpenClawHandlers(gatewayManager: GatewayManager): void {
+  async function ensureDingTalkPluginInstalled(): Promise<{ installed: boolean; warning?: string }> {
+    const targetDir = join(homedir(), '.openclaw', 'extensions', 'dingtalk');
+    const targetManifest = join(targetDir, 'openclaw.plugin.json');
+
+    if (existsSync(targetManifest)) {
+      logger.info('DingTalk plugin already installed from local mirror');
+      return { installed: true };
+    }
+
+    const candidateSources = app.isPackaged
+      ? [
+        join(process.resourcesPath, 'openclaw-plugins', 'dingtalk'),
+        join(process.resourcesPath, 'app.asar.unpacked', 'build', 'openclaw-plugins', 'dingtalk'),
+        join(process.resourcesPath, 'app.asar.unpacked', 'openclaw-plugins', 'dingtalk')
+      ]
+      : [
+        join(app.getAppPath(), 'build', 'openclaw-plugins', 'dingtalk'),
+        join(process.cwd(), 'build', 'openclaw-plugins', 'dingtalk'),
+        join(__dirname, '../../build/openclaw-plugins/dingtalk'),
+      ];
+
+    const sourceDir = candidateSources.find((dir) => existsSync(join(dir, 'openclaw.plugin.json')));
+    if (!sourceDir) {
+      logger.warn('Bundled DingTalk plugin mirror not found in candidate paths', { candidateSources });
+      return {
+        installed: false,
+        warning: `Bundled DingTalk plugin mirror not found. Checked: ${candidateSources.join(' | ')}`,
+      };
+    }
+
+    try {
+      mkdirSync(join(homedir(), '.openclaw', 'extensions'), { recursive: true });
+      rmSync(targetDir, { recursive: true, force: true });
+      cpSync(sourceDir, targetDir, { recursive: true, dereference: true });
+
+      if (!existsSync(targetManifest)) {
+        return { installed: false, warning: 'Failed to install DingTalk plugin mirror (manifest missing).' };
+      }
+
+      logger.info(`Installed DingTalk plugin from bundled mirror: ${sourceDir}`);
+      return { installed: true };
+    } catch (error) {
+      logger.warn('Failed to install DingTalk plugin from bundled mirror:', error);
+      return {
+        installed: false,
+        warning: 'Failed to install bundled DingTalk plugin mirror',
+      };
+    }
+  }
 
   // Get OpenClaw package status
   ipcMain.handle('openclaw:status', () => {
@@ -655,10 +730,6 @@ function registerOpenClawHandlers(gatewayManager: GatewayManager): void {
     }
   });
 
-  // Install a system-wide openclaw command on macOS (requires admin prompt)
-  ipcMain.handle('openclaw:installCliMac', async () => {
-    return installOpenClawCliMac();
-  });
 
   // ==================== Channel Configuration Handlers ====================
 
@@ -666,12 +737,24 @@ function registerOpenClawHandlers(gatewayManager: GatewayManager): void {
   ipcMain.handle('channel:saveConfig', async (_, channelType: string, config: Record<string, unknown>) => {
     try {
       logger.info('channel:saveConfig', { channelType, keys: Object.keys(config || {}) });
+      if (channelType === 'dingtalk') {
+        const installResult = await ensureDingTalkPluginInstalled();
+        if (!installResult.installed) {
+          return {
+            success: false,
+            error: installResult.warning || 'DingTalk plugin install failed',
+          };
+        }
+        await saveChannelConfig(channelType, config);
+        gatewayManager.debouncedRestart();
+        return {
+          success: true,
+          pluginInstalled: installResult.installed,
+          warning: installResult.warning,
+        };
+      }
       await saveChannelConfig(channelType, config);
       // Debounced restart so the gateway picks up the new channel config.
-      // The gateway watches openclaw.json, but a restart ensures a clean
-      // start for newly-added channels.  Using debouncedRestart() here
-      // instead of an explicit restart on the frontend side means that
-      // rapid config changes (e.g. setup wizard) coalesce into one restart.
       gatewayManager.debouncedRestart();
       return { success: true };
     } catch (error) {
