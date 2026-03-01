@@ -112,6 +112,7 @@ const electronAPI = {
         'skill:updateConfig',
         'skill:getConfig',
         'skill:getAllConfigs',
+        'skill:getExclusiveList',
         // Logs
         'log:getRecent',
         'log:readFile',

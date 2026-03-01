@@ -168,6 +168,7 @@ function SkillDetailDialog({ skill, onClose, onToggle }: SkillDetailDialogProps)
               <CardTitle className="flex items-center gap-2">
                 {skill.name}
                 {skill.isCore && <Lock className="h-4 w-4 text-muted-foreground" />}
+                {skill.isExclusive && <Sparkles className="h-4 w-4 text-amber-500/70" />}
               </CardTitle>
               <div className="flex gap-2 mt-2">
                 {skill.slug && !skill.isBundled && !skill.isCore && (
@@ -223,7 +224,7 @@ function SkillDetailDialog({ skill, onClose, onToggle }: SkillDetailDialogProps)
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">{t('detail.source')}</h3>
                     <Badge variant="secondary" className="mt-1 font-normal">
-                      {skill.isCore ? t('detail.coreSystem') : skill.isBundled ? t('detail.bundled') : t('detail.userInstalled')}
+                      {skill.isCore ? t('detail.coreSystem') : skill.isExclusive ? '专属' : skill.isBundled ? t('detail.bundled') : t('detail.userInstalled')}
                     </Badge>
                   </div>
                 </div>
@@ -540,7 +541,7 @@ export function Skills() {
   const [marketplaceQuery, setMarketplaceQuery] = useState('');
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
   const [activeTab, setActiveTab] = useState('all');
-  const [selectedSource, setSelectedSource] = useState<'all' | 'built-in' | 'marketplace'>('all');
+  const [selectedSource, setSelectedSource] = useState<'all' | 'built-in' | 'marketplace' | 'exclusive'>('all');
   const marketplaceDiscoveryAttemptedRef = useRef(false);
 
   const isGatewayRunning = gatewayStatus.state === 'running';
@@ -577,9 +578,11 @@ export function Skills() {
 
     let matchesSource = true;
     if (selectedSource === 'built-in') {
-      matchesSource = !!skill.isBundled;
+      matchesSource = !!skill.isBundled && !skill.isExclusive;
     } else if (selectedSource === 'marketplace') {
-      matchesSource = !skill.isBundled;
+      matchesSource = !skill.isBundled && !skill.isExclusive;
+    } else if (selectedSource === 'exclusive') {
+      matchesSource = !!skill.isExclusive;
     }
 
     return matchesSearch && matchesSource;
@@ -596,8 +599,9 @@ export function Skills() {
 
   const sourceStats = {
     all: skills.length,
-    builtIn: skills.filter(s => s.isBundled).length,
-    marketplace: skills.filter(s => !s.isBundled).length,
+    builtIn: skills.filter(s => s.isBundled && !s.isExclusive).length,
+    marketplace: skills.filter(s => !s.isBundled && !s.isExclusive).length,
+    exclusive: skills.filter(s => s.isExclusive).length,
   };
 
   // Handle toggle
@@ -804,6 +808,15 @@ export function Skills() {
                 <Globe className="h-3 w-3" />
                 {t('filter.marketplace', { count: sourceStats.marketplace })}
               </Button>
+              <Button
+                variant={selectedSource === 'exclusive' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedSource('exclusive')}
+                className="gap-2"
+              >
+                <Sparkles className="h-3 w-3" />
+                专属 ({sourceStats.exclusive})
+              </Button>
             </div>
           </div>
 
@@ -852,6 +865,8 @@ export function Skills() {
                             {skill.name}
                             {skill.isCore ? (
                               <Lock className="h-3 w-3 text-muted-foreground" />
+                            ) : skill.isExclusive ? (
+                              <Sparkles className="h-3 w-3 text-amber-500/70" />
                             ) : skill.isBundled ? (
                               <Puzzle className="h-3 w-3 text-blue-500/70" />
                             ) : (
@@ -861,7 +876,7 @@ export function Skills() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {!skill.isBundled && !skill.isCore && (
+                        {!skill.isBundled && !skill.isCore && !skill.isExclusive && (
                           <Button
                             variant="ghost"
                             size="icon"

@@ -42,6 +42,7 @@ interface SkillsState {
   searchError: string | null;
   installing: Record<string, boolean>; // slug -> boolean
   error: string | null;
+  exclusiveSkills: string[]; // List of exclusive skill IDs
 
   // Actions
   fetchSkills: () => Promise<void>;
@@ -52,6 +53,7 @@ interface SkillsState {
   disableSkill: (skillId: string) => Promise<void>;
   setSkills: (skills: Skill[]) => void;
   updateSkill: (skillId: string, updates: Partial<Skill>) => void;
+  fetchExclusiveSkills: () => Promise<void>;
 }
 
 export const useSkillsStore = create<SkillsState>((set, get) => ({
@@ -62,6 +64,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
   searchError: null,
   installing: {},
   error: null,
+  exclusiveSkills: [],
 
   fetchSkills: async () => {
     // Only show loading state if we have no skills yet (initial load)
@@ -84,6 +87,16 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
       const configResult = await window.electron.ipcRenderer.invoke(
         'skill:getAllConfigs'
       ) as Record<string, { apiKey?: string; env?: Record<string, string> }>;
+
+      // 4. Fetch exclusive skills list (with error handling)
+      let exclusiveSkillsList: string[] = [];
+      try {
+        exclusiveSkillsList = await window.electron.ipcRenderer.invoke('skill:getExclusiveList') as string[];
+      } catch (error) {
+        console.error('Failed to fetch exclusive skills list:', error);
+        exclusiveSkillsList = [];
+      }
+      set({ exclusiveSkills: exclusiveSkillsList });
 
       let combinedSkills: Skill[] = [];
       const currentSkills = get().skills;
@@ -109,6 +122,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
             },
             isCore: s.bundled && s.always,
             isBundled: s.bundled,
+            isExclusive: exclusiveSkillsList?.includes(s.skillKey),
           };
         });
       } else if (currentSkills.length > 0) {
@@ -134,6 +148,7 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
               config: directConfig,
               isCore: false,
               isBundled: false,
+              isExclusive: exclusiveSkillsList?.includes(cs.slug),
             });
           }
         });
@@ -277,5 +292,15 @@ export const useSkillsStore = create<SkillsState>((set, get) => ({
         skill.id === skillId ? { ...skill, ...updates } : skill
       ),
     }));
+  },
+
+  fetchExclusiveSkills: async () => {
+    try {
+      const result = await window.electron.ipcRenderer.invoke('skill:getExclusiveList') as string[];
+      set({ exclusiveSkills: result || [] });
+    } catch (error) {
+      console.error('Failed to fetch exclusive skills:', error);
+      set({ exclusiveSkills: [] });
+    }
   },
 }));

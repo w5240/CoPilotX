@@ -14,7 +14,7 @@ export const PORTS = {
   CLAWX_GUI: 23333,
   
   /** OpenClaw Gateway port */
-  OPENCLAW_GATEWAY: 18789,
+  OPENCLAW_GATEWAY: 15678,
 } as const;
 
 /**

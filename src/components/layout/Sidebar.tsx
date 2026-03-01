@@ -21,6 +21,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
+import logoName from '@/assets/logo/name.png';
 
 interface NavItemProps {
   to: string;
@@ -100,7 +101,9 @@ export function Sidebar() {
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
-      <div className="text-lg font-bold pt-4 pl-4 text-left">{t('sidebar.title')}</div>
+      <div className="text-lg font-bold p-4 pb-2 text-left">
+        <img src={logoName} alt="CoPilotX" className="h-5 w-auto" />
+      </div>
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-auto p-2">
         {navItems.map((item) => (

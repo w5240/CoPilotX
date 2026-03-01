@@ -262,7 +262,7 @@ export function Settings() {
       </Card>
 
       {/* Gateway */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>{t('gateway.title')}</CardTitle>
           <CardDescription>{t('gateway.description')}</CardDescription>
@@ -333,10 +333,10 @@ export function Settings() {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Updates */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
@@ -378,10 +378,10 @@ export function Settings() {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Advanced */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>{t('advanced.title')}</CardTitle>
           <CardDescription>{t('advanced.description')}</CardDescription>
@@ -400,7 +400,7 @@ export function Settings() {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Developer */}
       {devModeUnlocked && (

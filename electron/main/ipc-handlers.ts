@@ -46,6 +46,7 @@ import {
 } from '../utils/channel-config';
 import { checkUvInstalled, installUv, setupManagedPython } from '../utils/uv-setup';
 import { updateSkillConfig, getSkillConfig, getAllSkillConfigs } from '../utils/skill-config';
+import { getExclusiveSkillsList } from '../utils/bundled-skills';
 import { whatsAppLoginManager } from '../utils/whatsapp-login';
 import { getProviderConfig } from '../utils/provider-registry';
 import { deviceOAuthManager, OAuthProviderType } from '../utils/device-oauth';
@@ -149,6 +150,11 @@ function registerSkillConfigHandlers(): void {
   // Get all skill configs
   ipcMain.handle('skill:getAllConfigs', async () => {
     return await getAllSkillConfigs();
+  });
+
+  // Get exclusive skills list
+  ipcMain.handle('skill:getExclusiveList', () => {
+    return getExclusiveSkillsList();
   });
 }
 

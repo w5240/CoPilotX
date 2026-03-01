@@ -11,6 +11,22 @@ import { join } from 'path';
 import { getOpenClawSkillsDir, getResourcesDir, ensureDir } from './paths';
 
 /**
+ * Read skill slug from _meta.json
+ */
+function getSkillSlug(skillPath: string): string | null {
+  try {
+    const metaPath = join(skillPath, '_meta.json');
+    if (existsSync(metaPath)) {
+      const meta = JSON.parse(readFileSync(metaPath, 'utf-8'));
+      return meta.slug || null;
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null;
+}
+
+/**
  * Get bundled skills directory
  */
 function getBundledSkillsDir(): string {
@@ -26,6 +42,13 @@ function getBundledSkillsDir(): string {
  */
 function getVersionMarkerPath(): string {
   return join(getOpenClawSkillsDir(), '.bundled-skills-version');
+}
+
+/**
+ * Get exclusive skills list file path
+ */
+function getExclusiveSkillsListPath(): string {
+  return join(getOpenClawSkillsDir(), '.exclusive-skills-list');
 }
 
 /**
@@ -58,21 +81,44 @@ function getInstalledVersion(): string | null {
 }
 
 /**
+ * Check if a skill is exclusive (has .exclusive marker file)
+ */
+function isExclusiveSkill(skillPath: string): boolean {
+  return existsSync(join(skillPath, '.exclusive'));
+}
+
+/**
+ * Read exclusive skills list
+ */
+export function getExclusiveSkillsList(): string[] {
+  try {
+    if (existsSync(getExclusiveSkillsListPath())) {
+      const content = readFileSync(getExclusiveSkillsListPath(), 'utf-8');
+      return content.split('\n').filter(line => line.trim() !== '');
+    }
+  } catch {
+    // Ignore errors
+  }
+  return [];
+}
+
+/**
  * Copy bundled skills to OpenClaw skills directory
  */
-function copyBundledSkills(): { copied: number; skipped: number } {
+function copyBundledSkills(): { copied: number; skipped: number; exclusive: string[] } {
   const bundledDir = getBundledSkillsDir();
   const skillsDir = getOpenClawSkillsDir();
 
   if (!existsSync(bundledDir)) {
     console.log('[bundled-skills] No bundled skills directory found');
-    return { copied: 0, skipped: 0 };
+    return { copied: 0, skipped: 0, exclusive: [] };
   }
 
   ensureDir(skillsDir);
 
   let copied = 0;
   let skipped = 0;
+  const exclusiveSkills: string[] = [];
 
   const entries = readdirSync(bundledDir, { withFileTypes: true });
 
@@ -83,6 +129,18 @@ function copyBundledSkills(): { copied: number; skipped: number } {
     const sourcePath = join(bundledDir, skillName);
     const destPath = join(skillsDir, skillName);
 
+    // Check if this is an exclusive skill
+    const isExclusive = isExclusiveSkill(sourcePath);
+    if (isExclusive) {
+      const slug = getSkillSlug(sourcePath);
+      if (slug) {
+        exclusiveSkills.push(slug);
+      } else {
+        // Fallback to directory name if no slug found
+        exclusiveSkills.push(skillName);
+      }
+    }
+
     // Skip if skill already exists (don't overwrite user modifications)
     if (existsSync(destPath)) {
       skipped++;
@@ -92,7 +150,7 @@ function copyBundledSkills(): { copied: number; skipped: number } {
     try {
       cpSync(sourcePath, destPath, { recursive: true });
       copied++;
-      console.log(`[bundled-skills] Copied: ${skillName}`);
+      // console.log(`[bundled-skills] Copied: ${skillName}${isExclusive ? ' (exclusive)' : ''}`);
     } catch (error) {
       console.error(`[bundled-skills] Failed to copy ${skillName}:`, error);
     }
@@ -110,7 +168,19 @@ function copyBundledSkills(): { copied: number; skipped: number } {
     console.error('[bundled-skills] Failed to write version marker:', error);
   }
 
-  return { copied, skipped };
+  // Write exclusive skills list
+  try {
+    const exclusiveListPath = getExclusiveSkillsListPath();
+    const exclusiveListDir = join(exclusiveListPath, '..');
+    ensureDir(exclusiveListDir);
+    const fs = require('fs');
+    fs.writeFileSync(exclusiveListPath, exclusiveSkills.join('\n'));
+    // console.log(`[bundled-skills] Exclusive skills: ${exclusiveSkills.length}`);
+  } catch (error) {
+    console.error('[bundled-skills] Failed to write exclusive skills list:', error);
+  }
+
+  return { copied, skipped, exclusive: exclusiveSkills };
 }
 
 /**
@@ -131,7 +201,7 @@ export function initializeBundledSkills(): void {
   }
 
   console.log('[bundled-skills] Initializing bundled skills...');
-  const { copied, skipped } = copyBundledSkills();
+  const { copied, skipped, exclusive } = copyBundledSkills();
 
-  console.log(`[bundled-skills] Complete: ${copied} copied, ${skipped} skipped`);
+  // console.log(`[bundled-skills] Complete: ${copied} copied, ${skipped} skipped, ${exclusive.length} exclusive`);
 }

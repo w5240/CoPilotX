@@ -1,6 +1,6 @@
-appId: app.clawx.desktop
-productName: ClawX
-copyright: Copyright © 2026 ClawX
+appId: app.copilotx.desktop
+productName: CoPilotX
+copyright: Copyright © 2026 CoPilotX
 compression: maximum
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 
@@ -22,6 +22,9 @@ extraResources:
       - "!icons/*.svg"
       - "!bin/**"
       - "!screenshot/**"
+  # Bundled skills (private/custom skills packaged with the app)
+  - from: resources/bundled-skills/
+    to: bundled-skills/
   # OpenClaw package (node_modules copied separately by afterPack hook
   # because electron-builder respects .gitignore which excludes node_modules/)
   - from: build/openclaw/
@@ -62,7 +65,7 @@ mac:
     - from: resources/cli/posix/
       to: cli/
   category: public.app-category.productivity
-  icon: resources/icons/icon.icns
+  icon: resources/icons/copilot-icon.png
   target:
     - target: dmg
       arch:
@@ -84,7 +87,7 @@ mac:
 
 dmg:
   background: resources/dmg-background.png
-  icon: resources/icons/icon.icns
+  icon: resources/icons/copilot-icon.png
   iconSize: 100
   window:
     width: 540
@@ -108,7 +111,7 @@ win:
       to: bin
     - from: resources/cli/win32/
       to: cli/
-  icon: resources/icons/icon.ico
+  icon: resources/icons/copilot-icon.png
   target:
     - target: nsis
       arch:
@@ -130,8 +133,8 @@ nsis:
   uninstallDisplayName: ClawX
   license: LICENSE
   include: scripts/installer.nsh
-  installerIcon: resources/icons/icon.ico
-  uninstallerIcon: resources/icons/icon.ico
+  installerIcon: resources/icons/copilot-icon.png
+  uninstallerIcon: resources/icons/copilot-icon.png
 
 # Linux Configuration
 linux:
