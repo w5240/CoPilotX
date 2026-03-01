@@ -16,7 +16,7 @@ import { warmupNetworkOptimization } from '../utils/uv-env';
 import { ClawHubService } from '../gateway/clawhub';
 import { ensureClawXContext, repairClawXOnlyBootstrapFiles } from '../utils/openclaw-workspace';
 import { isQuitting, setQuitting } from './app-state';
-
+import { initializeBundledSkills } from '../utils/bundled-skills'; // 打包私有skill
 // Disable GPU hardware acceleration globally for maximum stability across
 // all GPU configurations (no GPU, integrated, discrete).
 //
@@ -186,6 +186,13 @@ async function initialize(): Promise<void> {
     logger.warn('Failed to repair bootstrap files:', error);
   });
 
+    // Initialize bundled skills (copy pre-packaged skills to ~/.openclaw/skills)
+    try {
+      initializeBundledSkills();
+    } catch (error) {
+      logger.warn('Failed to initialize bundled skills:', error);
+    }
+    
   // Start Gateway automatically (this seeds missing bootstrap files with full templates)
   try {
     logger.debug('Auto-starting Gateway...');

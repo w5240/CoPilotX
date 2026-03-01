@@ -540,7 +540,7 @@ export function Settings() {
       )}
 
       {/* About */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>{t('about.title')}</CardTitle>
         </CardHeader>
@@ -567,7 +567,7 @@ export function Settings() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }

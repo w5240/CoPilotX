@@ -100,6 +100,7 @@ export function Sidebar() {
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
+      <div className="text-lg font-bold pt-4 pl-4 text-left">{t('sidebar.title')}</div>
       {/* Navigation */}
       <nav className="flex-1 space-y-1 overflow-auto p-2">
         {navItems.map((item) => (
