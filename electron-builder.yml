@@ -112,7 +112,7 @@ win:
       to: bin
     - from: resources/cli/win32/
       to: cli/
-  icon: resources/icons/copilot-icon.png
+  icon: resources/icons/copilot-icon.ico
   target:
     - target: nsis
       arch:
@@ -122,20 +122,18 @@ win:
 nsis:
   oneClick: false
   perMachine: false
-  # Avoid NSIS build failure: warning 6010 (_ci_StrContains "not referenced") is emitted when
-  # building the uninstaller, because that function is only used in the install macro.
   warningsAsErrors: false
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
   differentialPackage: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ClawX
-  uninstallDisplayName: ClawX
+  shortcutName: CoPilotX
+  uninstallDisplayName: CoPilotX
   license: LICENSE
   include: scripts/installer.nsh
-  installerIcon: resources/icons/copilot-icon.png
-  uninstallerIcon: resources/icons/copilot-icon.png
+  installerIcon: resources/icons/copilot-icon.ico
+  uninstallerIcon: resources/icons/copilot-icon.ico
 
 # Linux Configuration
 linux:
