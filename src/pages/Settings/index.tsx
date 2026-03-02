@@ -262,7 +262,7 @@ export function Settings() {
       </Card>
 
       {/* Gateway */}
-      {/* <Card>
+      <Card>
         <CardHeader>
           <CardTitle>{t('gateway.title')}</CardTitle>
           <CardDescription>{t('gateway.description')}</CardDescription>
@@ -333,7 +333,7 @@ export function Settings() {
             />
           </div>
         </CardContent>
-      </Card> */}
+      </Card>
 
       {/* Updates */}
       {/* <Card>
