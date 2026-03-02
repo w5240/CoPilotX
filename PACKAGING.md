@@ -184,11 +184,24 @@ notarize: true
 notarize: false  # 是否需要公证，$99每年
 ```
 
+**GitHub Actions 配置：**
+```yaml
+# .github/workflows/release.yml
+# 默认已移除代码签名相关环境变量，避免构建失败
+- name: Build macOS
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # 以下变量已移除，避免签名错误
+    # CSC_LINK: ${{ secrets.MAC_CERTS }}
+    # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+```
+
 **影响：**
 - ✅ **正面**：
   - 打包速度更快（无需等待 Apple 审核）
   - 无需 Apple Developer 账号（$99/年）
   - 无需配置公证环境变量
+  - **避免构建失败**（证书路径错误）
 
 - ⚠️ **负面**：
   - 用户首次打开会看到"无法验证开发者"警告
@@ -196,20 +209,34 @@ notarize: false  # 是否需要公证，$99每年
   - 不适合正式发布
 
 **建议：**
-- **开发/测试**：保持 `notarize: false`
+- **开发/测试**：保持 `notarize: false`（当前配置）
 - **正式发布**：启用 `notarize: true` 并配置 Apple Developer 证书
 
 **如何启用公证：**
 1. 申请 Apple Developer 账号（$99/年）
-2. 配置环境变量：
-   ```bash
-   export APPLE_ID="your-apple-id@email.com"
-   export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
-   export APPLE_TEAM_ID="XXXXXXXXXX"
+2. 配置 GitHub Secrets：
    ```
-3. 修改配置：
+   MAC_CERTS: <base64编码的证书>
+   MAC_CERTS_PASSWORD: <证书密码>
+   APPLE_ID: <your-apple-id@email.com>
+   APPLE_APP_SPECIFIC_PASSWORD: <xxxx-xxxx-xxxx-xxxx>
+   APPLE_TEAM_ID: <XXXXXXXXXX>
+   ```
+3. 修改 `.github/workflows/release.yml`：
    ```yaml
-   notarize: true
+   - name: Build macOS
+     env:
+       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+       CSC_LINK: ${{ secrets.MAC_CERTS }}
+       CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+       APPLE_ID: ${{ secrets.APPLE_ID }}
+       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+   ```
+4. 修改 `electron-builder.yml`：
+   ```yaml
+   mac:
+     notarize: true
    ```
 
 ---
