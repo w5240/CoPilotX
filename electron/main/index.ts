@@ -64,8 +64,8 @@ function getAppIcon(): Electron.NativeImage | undefined {
   const iconsDir = getIconsDir();
   const iconPath =
     process.platform === 'win32'
-      ? join(iconsDir, 'icon.ico')
-      : join(iconsDir, 'icon.png');
+      ? join(iconsDir, 'copilot-icon.ico')
+      : join(iconsDir, 'copilot-icon.png');
   const icon = nativeImage.createFromPath(iconPath);
   return icon.isEmpty() ? undefined : icon;
 }
