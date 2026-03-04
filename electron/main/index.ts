@@ -38,6 +38,15 @@ import { initializeBundledSkills } from '../utils/bundled-skills'; // 打包私�
 // set `"disable-hardware-acceleration": false` in the app config (future).
 app.disableHardwareAcceleration();
 
+// Prevent multiple instances of the app from running simultaneously.
+// Without this, two instances each spawn their own gateway process on the
+// same port, then each treats the other's gateway as "orphaned" and kills
+// it — creating an infinite kill/restart loop on Windows.
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+}
+
 // Global references
 let mainWindow: BrowserWindow | null = null;
 const gatewayManager = new GatewayManager();
@@ -250,6 +259,15 @@ async function initialize(): Promise<void> {
     }
   });
 }
+
+// When a second instance is launched, focus the existing window instead.
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+});
 
 // Application lifecycle
 app.whenReady().then(() => {
