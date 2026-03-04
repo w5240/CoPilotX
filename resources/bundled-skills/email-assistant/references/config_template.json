@@ -1,0 +1,18 @@
+{
+  "timezone": "Asia/Shanghai",
+  "gmail": {
+    "email": "your@gmail.com",
+    "app_password": "your_app_password",
+    "smtp_port": 587,
+    "imap_port": 993
+  },
+  "qq": {
+    "email": "your@qq.com",
+    "授权码": "your_auth_code",
+    "smtp_port": 587,
+    "imap_port": 993
+  },
+  "feishu": {
+    "webhook": "https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+  }
+}

@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useTranslation } from 'react-i18next';
-import logoName from '@/assets/logo/name.png';
+import logoName from '@/assets/logo/logoName.png';
 
 interface NavItemProps {
   to: string;
@@ -124,11 +124,11 @@ export function Sidebar() {
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
     >
-      <div className="text-lg font-bold p-4 pb-2 text-left">
-        <img src={logoName} alt="CoPilotX" className="h-5 w-auto" />
+      <div className="p-0 transform -translate-x-8 -translate-y-2">
+        <img src={logoName} alt="CoPilotX" className="h-15" />
       </div>
       {/* Navigation */}
-      <nav className="flex-1 overflow-hidden flex flex-col p-2 gap-1">
+      <nav className="flex-1 overflow-hidden flex flex-col p-2 gap-1 transform -translate-y-6">
         {/* Chat nav item: acts as "New Chat" button, never highlighted as active */}
         <button
           onClick={() => {
