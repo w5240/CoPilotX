@@ -27,14 +27,14 @@ export function createTray(mainWindow: BrowserWindow): Tray {
 
   if (process.platform === 'win32') {
     // Windows: use .ico for best quality in system tray
-    iconPath = join(iconsDir, 'copilot-icon.ico');
+    iconPath = join(iconsDir, 'icon.ico');
   } else if (process.platform === 'darwin') {
     // macOS: use Template.png for proper status bar icon
     // The "Template" suffix tells macOS to treat it as a template image
-    iconPath = join(iconsDir, 'copilot-icon.png');
+    iconPath = join(iconsDir, 'tray-icon-Template.png');
   } else {
     // Linux: use 32x32 PNG
-    iconPath = join(iconsDir, 'copilot-icon.png');
+    iconPath = join(iconsDir, 'icon.png');
   }
 
   let icon = nativeImage.createFromPath(iconPath);
