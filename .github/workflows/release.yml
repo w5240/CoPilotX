@@ -189,9 +189,10 @@ jobs:
             
             ### ⚠️ 安装说明
             
-            - **macOS**: 首次打开可能会看到"无法验证开发者"警告。请前往系统偏好设置 → 安全性与隐私 → 仍要打开
-            - **Windows**: SmartScreen 可能会阻止应用。点击"更多信息" → "仍要运行"
-            - **Linux**: AppImage 需要可执行权限：`chmod +x CoPilotX-*.AppImage`
+            - **macOS**: On first launch, you may see "cannot verify developer". Go to System Preferences → Security & Privacy to allow the app to run
+            - **Windows**: SmartScreen may block the app. Click "More info" → "Run anyway" to proceed
+            - **Linux AppImage**: First run `chmod +x ClawX-*.AppImage` to add execute permission. On Ubuntu 22.04 you may also need `sudo apt install libfuse2`; on Ubuntu 24.04 use `sudo apt install libfuse2t64`
+            - **Linux .deb (Ubuntu 24.04)**: If installation fails due to missing dependencies, use `sudo apt install libgtk-3-0t64 libnotify4t64 libxss1t64` before installing
             
             ---
             

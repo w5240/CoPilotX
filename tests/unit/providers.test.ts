@@ -10,6 +10,7 @@ import {
   BUILTIN_PROVIDER_TYPES,
   getProviderConfig,
   getProviderEnvVar,
+  getProviderEnvVars,
 } from '@electron/utils/provider-registry';
 
 describe('provider metadata', () => {
@@ -40,6 +41,17 @@ describe('provider metadata', () => {
     });
   });
 
+  it('uses a single canonical env key for moonshot provider', () => {
+    expect(getProviderEnvVar('moonshot')).toBe('MOONSHOT_API_KEY');
+    expect(getProviderEnvVars('moonshot')).toEqual(['MOONSHOT_API_KEY']);
+    expect(getProviderConfig('moonshot')).toEqual(
+      expect.objectContaining({
+        baseUrl: 'https://api.moonshot.cn/v1',
+        apiKeyEnv: 'MOONSHOT_API_KEY',
+      })
+    );
+  });
+
   it('keeps builtin provider sources in sync', () => {
     expect(BUILTIN_PROVIDER_TYPES).toEqual(
       expect.arrayContaining(['anthropic', 'openai', 'google', 'openrouter', 'ark', 'moonshot', 'siliconflow', 'minimax-portal', 'minimax-portal-cn', 'qwen-portal', 'ollama'])
@@ -60,13 +72,12 @@ describe('provider metadata', () => {
     );
   });
 
-  it('only exposes OpenRouter and SiliconFlow model overrides in developer mode', () => {
+  it('exposes OpenRouter model overrides by default and keeps SiliconFlow developer-only', () => {
     const openrouter = PROVIDER_TYPE_INFO.find((provider) => provider.id === 'openrouter');
     const siliconflow = PROVIDER_TYPE_INFO.find((provider) => provider.id === 'siliconflow');
 
     expect(openrouter).toMatchObject({
       showModelId: true,
-      showModelIdInDevModeOnly: true,
       defaultModelId: 'anthropic/claude-opus-4.6',
     });
     expect(siliconflow).toMatchObject({
@@ -75,23 +86,24 @@ describe('provider metadata', () => {
       defaultModelId: 'deepseek-ai/DeepSeek-V3',
     });
 
-    expect(shouldShowProviderModelId(openrouter, false)).toBe(false);
+    expect(shouldShowProviderModelId(openrouter, false)).toBe(true);
     expect(shouldShowProviderModelId(siliconflow, false)).toBe(false);
     expect(shouldShowProviderModelId(openrouter, true)).toBe(true);
     expect(shouldShowProviderModelId(siliconflow, true)).toBe(true);
   });
 
-  it('only saves OpenRouter and SiliconFlow model overrides in developer mode', () => {
+  it('saves OpenRouter model overrides by default and keeps SiliconFlow developer-only', () => {
     const openrouter = PROVIDER_TYPE_INFO.find((provider) => provider.id === 'openrouter');
     const siliconflow = PROVIDER_TYPE_INFO.find((provider) => provider.id === 'siliconflow');
     const ark = PROVIDER_TYPE_INFO.find((provider) => provider.id === 'ark');
 
-    expect(resolveProviderModelForSave(openrouter, 'openai/gpt-5', false)).toBeUndefined();
+    expect(resolveProviderModelForSave(openrouter, 'openai/gpt-5', false)).toBe('openai/gpt-5');
     expect(resolveProviderModelForSave(siliconflow, 'Qwen/Qwen3-Coder-480B-A35B-Instruct', false)).toBeUndefined();
 
     expect(resolveProviderModelForSave(openrouter, 'openai/gpt-5', true)).toBe('openai/gpt-5');
     expect(resolveProviderModelForSave(siliconflow, 'Qwen/Qwen3-Coder-480B-A35B-Instruct', true)).toBe('Qwen/Qwen3-Coder-480B-A35B-Instruct');
 
+    expect(resolveProviderModelForSave(openrouter, '   ', false)).toBe('anthropic/claude-opus-4.6');
     expect(resolveProviderModelForSave(openrouter, '   ', true)).toBe('anthropic/claude-opus-4.6');
     expect(resolveProviderModelForSave(siliconflow, '   ', true)).toBe('deepseek-ai/DeepSeek-V3');
     expect(resolveProviderModelForSave(ark, '  ep-custom-model  ', false)).toBe('ep-custom-model');
